@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGI Evolution v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <style>
+        .code-editor { font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; tab-size: 4; }
+        .neuron { background: linear-gradient(145deg, #4f46e5, #7c3aed); cursor: pointer; transition: all 0.3s; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+        .terminal { background-color: #1e293b; color: #f8fafc; font-family: 'Courier New', monospace; }
+        .blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { from, to { opacity: 1; } 50% { opacity: 0; } }
+        .glow { filter: drop-shadow(0 0 8px currentColor); }
+        .connection { position: absolute; height: 2px; background: rgba(79, 70, 229, 0.3); transform-origin: 0 0; z-index: -1; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Cabeçalho -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
+                    <i class="fas fa-brain mr-2 glow" style="color: #7c3aed;"></i> AGI Evolution <span id="version" class="text-sm text-green-400 ml-2">v2.0</span>
+                </h1>
+                <p class="text-gray-400" id="subtitle">Cognitive Architecture with Persistent Memory</p>
+            </div>
+            <div class="flex space-x-4">
+                <div class="bg-gray-800 px-4 py-2 rounded-lg flex items-center">
+                    <div id="status-led" class="w-3 h-3 rounded-full bg-green-500 mr-2 pulse"></div>
+                    <span id="status-text">Online</span>
+                </div>
+                <button id="memory-btn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-all">
+                    <i class="fas fa-memory mr-2"></i>Memory
+                </button>
+            </div>
+        </header>
+
+        <!-- Painel Principal -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Painel Esquerdo - Rede Neural -->
+            <div class="bg-gray-800 rounded-xl p-6 lg:col-span-1">
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-project-diagram mr-2 text-purple-400"></i> Neural Topology
+                </h2>
+                <div class="relative h-64 bg-gray-900 rounded-lg overflow-hidden" id="neural-network">
+                    <!-- Neurônios e conexões serão renderizados via JS -->
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-4">
+                    <div class="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors">
+                        <p class="text-gray-400 text-sm">Neurons</p>
+                        <p class="text-xl font-mono"><span id="neuron-count">0</span></p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors">
+                        <p class="text-gray-400 text-sm">Connections</p>
+                        <p class="text-xl font-mono"><span id="connection-count">0</span></p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors">
+                        <p class="text-gray-400 text-sm">Memory Usage</p>
+                        <p class="text-xl font-mono"><span id="memory-usage">0</span>KB</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-colors">
+                        <p class="text-gray-400 text-sm">API Queries</p>
+                        <p class="text-xl font-mono"><span id="api-count">0</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel Central - Interação -->
+            <div class="bg-gray-800 rounded-xl p-6 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-comments mr-2 text-blue-400"></i> Cognitive Interface
+                    </h2>
+                    <div class="flex space-x-2">
+                        <button id="eval-btn" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-lg text-sm transition-all">
+                            <i class="fas fa-chart-line mr-1"></i> Evaluate
+                        </button>
+                        <button id="clear-btn" class="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-lg text-sm transition-all">
+                            <i class="fas fa-broom mr-1"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-gray-900 rounded-lg overflow-hidden">
+                    <div class="flex bg-gray-800 px-4 py-2 text-sm">
+                        <div class="mr-4 text-yellow-400">terminal</div>
+                        <div class="text-gray-400">AGI Cognitive Process</div>
+                    </div>
+                    <div id="terminal" class="terminal p-4 h-96 overflow-auto">
+                        <div>> Booting AGI Evolution v2.0...</div>
+                        <div>> Loading persistent memory...</div>
+                        <div>> TensorFlow.js backend initialized</div>
+                        <div>> Ready for cognitive input</div>
+                        <div>> [Type 'help' for commands]</div>
+                    </div>
+                    <div class="flex bg-gray-800 px-4 py-2">
+                        <span class="text-green-400 mr-2">></span>
+                        <input id="command-input" type="text" class="bg-transparent flex-1 outline-none" placeholder="Enter cognitive input...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel de Métricas -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 rounded-xl p-4 hover:bg-gray-700 transition-colors">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-medium text-gray-400">Knowledge Base</h3>
+                    <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center">
+                        <i class="fas fa-database text-blue-400"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="knowledge-bar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-sm">
+                        <span id="knowledge-value">0%</span>
+                        <span class="text-gray-400">Concepts: <span id="concept-count">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 hover:bg-gray-700 transition-colors">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-medium text-gray-400">Learning Progress</h3>
+                    <div class="w-8 h-8 rounded-full bg-purple-900 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-purple-400"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="learning-bar" class="h-full bg-purple-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-sm">
+                        <span id="learning-value">0%</span>
+                        <span class="text-gray-400">Last gain: <span id="last-gain">0%</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 hover:bg-gray-700 transition-colors">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-medium text-gray-400">API Connection</h3>
+                    <div class="w-8 h-8 rounded-full bg-green-900 flex items-center justify-center">
+                        <i class="fas fa-plug text-green-400"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="api-bar" class="h-full bg-green-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-sm">
+                        <span id="api-status">Disabled</span>
+                        <span class="text-gray-400">Latency: <span id="api-latency">0ms</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 hover:bg-gray-700 transition-colors">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-medium text-gray-400">Autonomy</h3>
+                    <div class="w-8 h-8 rounded-full bg-red-900 flex items-center justify-center">
+                        <i class="fas fa-robot text-red-400"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="autonomy-bar" class="h-full bg-red-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-sm">
+                        <span id="autonomy-value">0%</span>
+                        <span class="text-gray-400">Next eval: <span id="next-eval">0s</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="mt-6 bg-gray-800 rounded-xl p-3 text-sm flex flex-wrap justify-between items-center">
+            <div class="flex items-center mr-4">
+                <div id="system-led" class="w-3 h-3 rounded-full bg-green-500 mr-2 pulse"></div>
+                <span id="system-status">Operational</span>
+            </div>
+            <div class="flex items-center mr-4">
+                <i class="fas fa-microchip text-blue-400 mr-2"></i>
+                <span>Processes: <span id="process-count">0</span></span>
+            </div>
+            <div class="flex items-center mr-4">
+                <i class="fas fa-memory text-purple-400 mr-2"></i>
+                <span>RAM: <span id="ram-usage">0</span>MB</span>
+            </div>
+            <div class="flex items-center mr-4">
+                <i class="fas fa-network-wired text-green-400 mr-2"></i>
+                <span>Network: <span id="network-status">Online</span></span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-clock text-yellow-400 mr-2"></i>
+                <span>Uptime: <span id="uptime">0s</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Modal -->
+    <div id="memory-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">
+                    <i class="fas fa-memory mr-2 text-purple-400"></i> Persistent Memory
+                </h2>
+                <button id="close-memory" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto bg-gray-900 rounded-lg p-4 font-mono text-sm" id="memory-content">
+                <!-- Memory content will be loaded here -->
+            </div>
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-gray-400 text-sm">
+                    <span id="memory-size">0</span> concepts stored
+                </div>
+                <button id="export-memory" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-download mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ======================
+        // AGI CORE IMPLEMENTATION
+        // ======================
+        class AGICore {
+            constructor() {
+                this.version = "2.0.1";
+                this.knowledge = {};
+                this.concepts = 0;
+                this.neurons = 0;
+                this.connections = 0;
+                this.apiCalls = 0;
+                this.memorySize = 0;
+                this.processes = 0;
+                this.learningProgress = 0;
+                this.autonomyLevel = 0;
+                this.model = null;
+                this.uptime = 0;
+                this.apiLatency = 0;
+                this.apiEnabled = false;
+                this.evaluationInterval = null;
+                this.uptimeInterval = null;
+                this.loadMemory();
+                this.initModel();
+                this.startSystem();
+            }
+
+            async initModel() {
+                try {
+                    this.model = tf.sequential();
+                    this.model.add(tf.layers.dense({
+                        units: 32,
+                        activation: 'relu',
+                        inputShape: [256]
+                    }));
+                    this.model.add(tf.layers.dense({units: 16, activation: 'relu'}));
+                    this.model.add(tf.layers.dense({units: 8, activation: 'softmax'}));
+                    
+                    this.model.compile({
+                        optimizer: tf.train.adam(0.001),
+                        loss: 'categoricalCrossentropy',
+                        metrics: ['accuracy']
+                    });
+
+                    this.updateNeuralNetwork(16, 64);
+                    this.log("Neural network initialized (3-layer perceptron)");
+                    this.log(`Model summary: ${this.model.countParams()} parameters`);
+
+                } catch (error) {
+                    this.logError(`Model initialization failed: ${error.message}`);
+                }
+            }
+
+            async learnFromInput(text) {
+                if (!text || text.length < 2) return;
+
+                this.startProcess();
+                this.setStatus("Learning", "yellow");
+
+                try {
+                    // Processamento de linguagem básico
+                    const tokens = this.tokenize(text);
+                    let newConcepts = 0;
+
+                    // Adiciona ao conhecimento
+                    tokens.forEach(token => {
+                        if (!this.knowledge[token]) {
+                            this.knowledge[token] = {count: 1, embeddings: null};
+                            newConcepts++;
+                            this.concepts++;
+                        } else {
+                            this.knowledge[token].count++;
+                        }
+                    });
+
+                    if (newConcepts > 0) {
+                        this.log(`Learned ${newConcepts} new concepts from input`);
+                    }
+
+                    // Atualiza a rede neural
+                    const targetNeurons = Math.min(128, 16 + Math.floor(this.concepts / 5));
+                    const targetConnections = targetNeurons * 4;
+                    this.updateNeuralNetwork(targetNeurons, targetConnections);
+
+                    // Treina o modelo
+                    await this.trainModel(tokens);
+
+                    // Atualiza progresso de aprendizado
+                    this.learningProgress = Math.min(100, this.learningProgress + (newConcepts * 0.5));
+                    
+                    // Se habilitado, consulta API para enriquecimento
+                    if (this.apiEnabled && newConcepts > 0) {
+                        await this.enrichWithAPI(text);
+                    }
+
+                    // Salva memória
+                    this.saveMemory();
+
+                } catch (error) {
+                    this.logError(`Learning failed: ${error.message}`);
+                } finally {
+                    this.endProcess();
+                    this.setStatus("Online", "green");
+                    this.updateMetrics();
+                }
+            }
+
+            async trainModel(tokens) {
+                try {
+                    // Simula embeddings (em produção, usaria Word2Vec/BERT)
+                    const embeddings = tokens.map(t => 
+                        this.knowledge[t]?.embeddings || Array(256).fill(0).map(() => Math.random() * 0.1)
+                    );
+                    
+                    const input = tf.tensor2d([embeddings.flat()]);
+                    const output = tf.tensor2d([Array(8).fill(0).map((_, i) => i === 0 ? 1 : 0)]);
+                    
+                    const history = await this.model.fit(input, output, {
+                        epochs: 1,
+                        batchSize: 1,
+                        verbose: 0
+                    });
+
+                    const loss = history.history.loss[0];
+                    this.log(`Model trained (Loss: ${loss.toFixed(4)})`);
+
+                    // Atualiza embeddings com aprendizado (simplificado)
+                    tokens.forEach(t => {
+                        if (!this.knowledge[t].embeddings) {
+                            this.knowledge[t].embeddings = Array(256).fill(0).map(() => Math.random() * 0.1);
+                        }
+                    });
+
+                } catch (error) {
+                    this.logError(`Training error: ${error.message}`);
+                }
+            }
+
+            async enrichWithAPI(text) {
+                if (!this.apiEnabled) return;
+
+                this.startProcess();
+                this.setStatus("API Query", "blue");
+                const startTime = performance.now();
+
+                try {
+                    // Simulação de chamada API (substitua por uma real)
+                    this.log("Querying knowledge API...");
+                    
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    
+                    // Simula resposta da API
+                    const apiResponse = {
+                        entities: text.split(' ').filter(w => w.length > 3).map(w => ({
+                            concept: w,
+                            description: `This is a simulated API response about ${w}`,
+                            related: ["knowledge", "information", "data"]
+                        })),
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // Processa resposta
+                    apiResponse.entities.forEach(entity => {
+                        if (this.knowledge[entity.concept]) {
+                            if (!this.knowledge[entity.concept].metadata) {
+                                this.knowledge[entity.concept].metadata = {};
+                            }
+                            this.knowledge[entity.concept].metadata.apiData = {
+                                description: entity.description,
+                                related: entity.related,
+                                timestamp: entity.timestamp
+                            };
+                        }
+                    });
+
+                    this.apiCalls++;
+                    this.apiLatency = Math.floor(performance.now() - startTime);
+                    this.log(`API enriched ${apiResponse.entities.length} concepts`);
+                    this.updateMetrics();
+
+                } catch (error) {
+                    this.logError(`API query failed: ${error.message}`);
+                } finally {
+                    this.endProcess();
+                    this.setStatus("Online", "green");
+                }
+            }
+
+            updateNeuralNetwork(neuronCount, connectionCount) {
+                this.neurons = neuronCount;
+                this.connections = connectionCount;
+                
+                // Atualiza UI
+                document.getElementById('neuron-count').textContent = neuronCount;
+                document.getElementById('connection-count').textContent = connectionCount;
+                
+                // Renderiza rede neural
+                this.renderNeuralNetwork(neuronCount, connectionCount);
+            }
+
+            renderNeuralNetwork(neuronCount, connectionCount) {
+                const container = document.getElementById('neural-network');
+                container.innerHTML = '';
+                
+                // Cria neurônios
+                const neurons = [];
+                for (let i = 0; i < neuronCount; i++) {
+                    const neuron = document.createElement('div');
+                    neuron.className = 'neuron absolute w-5 h-5 rounded-full pulse';
+                    neuron.style.top = `${5 + Math.random() * 90}%`;
+                    neuron.style.left = `${5 + Math.random() * 90}%`;
+                    neuron.dataset.id = i;
+                    container.appendChild(neuron);
+                    neurons.push(neuron);
+                    
+                    // Efeito hover
+                    neuron.addEventListener('mouseenter', () => {
+                        neuron.style.transform = 'scale(1.8)';
+                        neuron.style.boxShadow = '0 0 15px #7c3aed';
+                    });
+                    neuron.addEventListener('mouseleave', () => {
+                        neuron.style.transform = '';
+                        neuron.style.boxShadow = '';
+                    });
+                }
+                
+                // Cria conexões (simplificado)
+                for (let i = 0; i < connectionCount; i++) {
+                    const neuron1 = neurons[Math.floor(Math.random() * neurons.length)];
+                    const neuron2 = neurons[Math.floor(Math.random() * neurons.length)];
+                    
+                    if (neuron1 !== neuron2) {
+                        const rect1 = neuron1.getBoundingClientRect();
+                        const rect2 = neuron2.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        
+                        const x1 = rect1.left + rect1.width/2 - containerRect.left;
+                        const y1 = rect1.top + rect1.height/2 - containerRect.top;
+                        const x2 = rect2.left + rect2.width/2 - containerRect.left;
+                        const y2 = rect2.top + rect2.height/2 - containerRect.top;
+                        
+                        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                        
+                        const connection = document.createElement('div');
+                        connection.className = 'connection';
+                        connection.style.width = `${length}px`;
+                        connection.style.left = `${x1}px`;
+                        connection.style.top = `${y1}px`;
+                        connection.style.transform = `rotate(${angle}deg)`;
+                        connection.style.opacity = 0.1 + Math.random() * 0.3;
+                        
+                        container.appendChild(connection);
+                    }
+                }
+            }
+
+            startSystem() {
+                // Atualiza uptime
+                this.uptimeInterval = setInterval(() => {
+                    this.uptime++;
+                    document.getElementById('uptime').textContent = this.formatUptime(this.uptime);
+                }, 1000);
+
+                // Autoavaliação periódica
+                this.evaluationInterval = setInterval(() => {
+                    this.autoEvaluate();
+                }, 30000); // 30 segundos
+
+                // Inicia métricas
+                this.updateMetrics();
+                this.log("System startup completed");
+            }
+
+            autoEvaluate() {
+                this.startProcess();
+                this.setStatus("Evaluating", "purple");
+                
+                try {
+                    // Avaliação de conhecimento
+                    const knowledgeScore = Math.min(100, Math.floor(this.concepts / 2));
+                    
+                    // Avaliação de modelo
+                    const testInput = tf.tensor2d([Array(256).fill(0).map(() => Math.random())]);
+                    const prediction = this.model.predict(testInput);
+                    const predictionScore = prediction.dataSync()[0] * 100;
+                    
+                    // Calcula autonomia
+                    this.autonomyLevel = Math.min(100, Math.floor(
+                        (knowledgeScore * 0.6) + (predictionScore * 0.4)
+                    ));
+                    
+                    // Log de resultados
+                    this.log(`Auto-evaluation results:`);
+                    this.log(`- Knowledge: ${knowledgeScore}/100`);
+                    this.log(`- Model: ${predictionScore.toFixed(1)}/100`);
+                    this.log(`- Autonomy: ${this.autonomyLevel}/100`);
+                    
+                    // Atualiza UI
+                    this.updateMetrics();
+                    
+                } catch (error) {
+                    this.logError(`Evaluation failed: ${error.message}`);
+                } finally {
+                    this.endProcess();
+                    this.setStatus("Online", "green");
+                }
+            }
+
+            updateMetrics() {
+                // Conhecimento
+                const knowledgePercent = Math.min(100, Math.floor(this.concepts / 2));
+                document.getElementById('knowledge-bar').style.width = `${knowledgePercent}%`;
+                document.getElementById('knowledge-value').textContent = `${knowledgePercent}%`;
+                document.getElementById('concept-count').textContent = this.concepts;
+                
+                // Aprendizado
+                document.getElementById('learning-bar').style.width = `${this.learningProgress}%`;
+                document.getElementById('learning-value').textContent = `${this.learningProgress}%`;
+                
+                // API
+                document.getElementById('api-count').textContent = this.apiCalls;
+                document.getElementById('api-latency').textContent = `${this.apiLatency}ms`;
+                document.getElementById('api-status').textContent = this.apiEnabled ? "Active" : "Disabled";
+                document.getElementById('api-bar').style.width = this.apiEnabled ? "100%" : "30%";
+                
+                // Autonomia
+                document.getElementById('autonomy-bar').style.width = `${this.autonomyLevel}%`;
+                document.getElementById('autonomy-value').textContent = `${this.autonomyLevel}%`;
+                
+                // Sistema
+                document.getElementById('process-count').textContent = this.processes;
+                document.getElementById('ram-usage').textContent = Math.floor(this.memorySize / 1024);
+                document.getElementById('memory-usage').textContent = Math.floor(this.memorySize);
+                
+                // Próxima avaliação
+                const nextEval = 30 - (this.uptime % 30);
+                document.getElementById('next-eval').textContent = `${nextEval}s`;
+            }
+
+            saveMemory() {
+                try {
+                    const memoryStr = JSON.stringify(this.knowledge);
+                    localStorage.setItem('agi_memory', memoryStr);
+                    this.memorySize = new Blob([memoryStr]).size;
+                    this.log(`Memory saved (${this.formatBytes(this.memorySize)})`);
+                } catch (error) {
+                    this.logError(`Memory save failed: ${error.message}`);
+                }
+            }
+
+            loadMemory() {
+                try {
+                    const memoryStr = localStorage.getItem('agi_memory');
+                    if (memoryStr) {
+                        this.knowledge = JSON.parse(memoryStr);
+                        this.concepts = Object.keys(this.knowledge).length;
+                        this.memorySize = new Blob([memoryStr]).size;
+                        this.log(`Loaded ${this.concepts} concepts from memory`);
+                    }
+                } catch (error) {
+                    this.logError(`Memory load failed: ${error.message}`);
+                }
+            }
+
+            exportMemory() {
+                const dataStr = JSON.stringify(this.knowledge, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const exportName = `agi_memory_${new Date().toISOString()}.json`;
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', dataUri);
+                link.setAttribute('download', exportName);
+                document.body.appendChild(link);
+                
+                link.click();
+                document.body.removeChild(link);
+                this.log(`Memory exported as ${exportName}`);
+            }
+
+            showMemory() {
+                const memoryContent = document.getElementById('memory-content');
+                memoryContent.innerHTML = '';
+                
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(this.knowledge, null, 2);
+                memoryContent.appendChild(pre);
+                
+                document.getElementById('memory-size').textContent = Object.keys(this.knowledge).length;
+                document.getElementById('memory-modal').classList.remove('hidden');
+            }
+
+            // Utilitários
+            tokenize(text) {
+                return text.toLowerCase()
+                    .replace(/[^\w\s]/g, '')
+                    .split(/\s+/)
+                    .filter(t => t.length > 1);
+            }
+
+            log(message) {
+                if (Array.isArray(message)) {
+                    message.forEach(m => addTerminalOutput(`> ${m}`));
+                } else {
+                    addTerminalOutput(`> ${message}`);
+                }
+            }
+
+            logError(message) {
+                addTerminalOutput(`! ERROR: ${message}`);
+            }
+
+            setStatus(text, color) {
+                const led = document.getElementById('status-led');
+                const statusText = document.getElementById('status-text');
+                
+                // Remove todas as classes de cor
+                ['green', 'yellow', 'red', 'blue', 'purple'].forEach(c => {
+                    led.classList.remove(`bg-${c}-500`);
+                });
+                
+                // Adiciona nova cor
+                led.classList.add(`bg-${color}-500`);
+                statusText.textContent = text;
+            }
+
+            startProcess() {
+                this.processes++;
+                document.getElementById('process-count').textContent = this.processes;
+            }
+
+            endProcess() {
+                this.processes = Math.max(0, this.processes - 1);
+                document.getElementById('process-count').textContent = this.processes;
+            }
+
+            formatUptime(seconds) {
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                
+                return `${days}d ${hours}h ${mins}m ${secs}s`;
+            }
+
+            formatBytes(bytes) {
+                if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + 'MB';
+                if (bytes >= 1024) return (bytes / 1024).toFixed(1) + 'KB';
+                return bytes + 'B';
+            }
+
+            // Interface de Comandos
+            processCommand(command) {
+                if (!command) return ["Empty command"];
+                
+                try {
+                    if (command === 'help') {
+                        return [
+                            "AGI Evolution v2.0 Command Interface:",
+                            "------------------------------------",
+                            "help - Show this help",
+                            "teach [text] - Teach new knowledge",
+                            "memory - Show persistent memory",
+                            "eval - Run system evaluation",
+                            "api [on|off] - Toggle API connection",
+                            "clear - Clear terminal",
+                            "export - Export memory to file",
+                            "status - Show system status"
+                        ];
+                    }
+                    else if (command.startsWith('teach ')) {
+                        const text = command.substring(6);
+                        this.learnFromInput(text);
+                        return [`Teaching: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`];
+                    }
+                    else if (command === 'memory') {
+                        this.showMemory();
+                        return ["Opening memory viewer..."];
+                    }
+                    else if (command === 'eval') {
+                        this.autoEvaluate();
+                        return ["Starting evaluation..."];
+                    }
+                    else if (command.startsWith('api ')) {
+                        const arg = command.substring(4).trim();
+                        if (arg === 'on') {
+                            this.apiEnabled = true;
+                            return ["API connection enabled"];
+                        } else if (arg === 'off') {
+                            this.apiEnabled = false;
+                            return ["API connection disabled"];
+                        } else {
+                            return ["Invalid API command. Use 'api on' or 'api off'"];
+                        }
+                    }
+                    else if (command === 'clear') {
+                        document.getElementById('terminal').innerHTML = '';
+                        return ["> Terminal cleared"];
+                    }
+                    else if (command === 'export') {
+                        this.exportMemory();
+                        return ["Preparing memory export..."];
+                    }
+                    else if (command === 'status') {
+                        return [
+                            "System Status Report:",
+                            "---------------------",
+                            `Version: ${this.version}`,
+                            `Concepts: ${this.concepts}`,
+                            `Neurons: ${this.neurons}`,
+                            `Connections: ${this.connections}`,
+                            `Memory: ${this.formatBytes(this.memorySize)}`,
+                            `API Calls: ${this.apiCalls}`,
+                            `Autonomy: ${this.autonomyLevel}%`,
+                            `Uptime: ${this.formatUptime(this.uptime)}`
+                        ];
+                    }
+                    else {
+                        return [`Unknown command: "${command}"`];
+                    }
+                } catch (error) {
+                    return [`Command error: ${error.message}`];
+                }
+            }
+        }
+
+        // ======================
+        // INTERFACE FUNCTIONS
+        // ======================
+        function addTerminalOutput(text) {
+            const terminal = document.getElementById('terminal');
+            
+            if (Array.isArray(text)) {
+                text.forEach(line => {
+                    const div = document.createElement('div');
+                    div.textContent = line;
+                    terminal.appendChild(div);
+                });
+            } else {
+                const div = document.createElement('div');
+                div.textContent = text;
+                terminal.appendChild(div);
+            }
+            
+            // Mantém no máximo 200 linhas
+            while (terminal.children.length > 200) {
+                terminal.removeChild(terminal.children[0]);
+            }
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // ======================
+        // INITIALIZATION
+        // ======================
+        const agi = new AGICore();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Configura entrada de comandos
+            const input = document.getElementById('command-input');
+            
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && input.value.trim()) {
+                    // Mostra comando no terminal
+                    addTerminalOutput(`> ${input.value}`);
+                    
+                    // Processa comando
+                    const responses = agi.processCommand(input.value);
+                    addTerminalOutput(responses);
+                    
+                    // Limpa entrada
+                    input.value = '';
+                }
+            });
+            
+            // Botão de avaliação
+            document.getElementById('eval-btn').addEventListener('click', () => {
+                addTerminalOutput("> Manual evaluation requested");
+                agi.autoEvaluate();
+            });
+            
+            // Botão de limpar
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                document.getElementById('terminal').innerHTML = '';
+                addTerminalOutput("> Terminal cleared");
+            });
+            
+            // Botão de memória
+            document.getElementById('memory-btn').addEventListener('click', () => {
+                agi.showMemory();
+            });
+            
+            // Fechar modal de memória
+            document.getElementById('close-memory').addEventListener('click', () => {
+                document.getElementById('memory-modal').classList.add('hidden');
+            });
+            
+            // Exportar memória
+            document.getElementById('export-memory').addEventListener('click', () => {
+                agi.exportMemory();
+            });
+            
+            // Foco no input
+            input.focus();
+        });
+    </script>
+</body>
+</html>
